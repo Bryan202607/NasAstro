@@ -26,13 +26,13 @@ td,th{border-bottom:1px solid rgba(128,128,128,.3);padding:6px 8px;text-align:le
 <h3>Version Windows (exécutable)</h3>
 <ol>
 <li>Dézippez le dossier <code>NasAstro</code> (ne lancez pas depuis le zip).</li>
-<li>Double-cliquez <code>NasAstro.exe</code>. Une fenêtre noire s'ouvre : c'est le serveur local, <b>ne la fermez pas</b> tant que vous utilisez l'application.</li>
+<li>Double-cliquez <code>NasAstro.exe</code>. L'application s'ouvre dans sa propre fenêtre, comme un logiciel. Fermez la fenêtre pour tout arrêter.</li>
 <li>Le navigateur s'ouvre sur l'application. Sinon, allez sur l'adresse affichée (<code>http://localhost:8000</code>).</li>
 <li>Au premier lancement, Windows peut demander d'autoriser le réseau : cliquez <b>Autoriser</b> (nécessaire pour le téléphone).</li>
 <li>Pour tester sans vrais capteurs : lancez <code>Lancer_avec_simulateur.bat</code> à la place.</li>
 </ol>
 <h3>Sur téléphone</h3>
-<p>PC et téléphone sur le même Wi-Fi : ouvrez dans le navigateur du téléphone l'adresse « Depuis un téléphone » affichée dans la fenêtre noire (ex. <code>http://192.168.1.20:8000</code>).</p>
+<p>PC et téléphone sur le même Wi-Fi : ouvrez dans le navigateur du téléphone l'adresse « Depuis un téléphone » écrite dans <code>data\nasastro.log</code> (ex. <code>http://192.168.1.20:8000</code>).</p>
 
 <h2>2. Les deux modes</h2>
 <table><tr><th></th><th>Mode normal</th><th>Mode démo</th></tr>
@@ -47,7 +47,7 @@ td,th{border-bottom:1px solid rgba(128,128,128,.3);padding:6px 8px;text-align:le
 <li><b>Médecin</b> : même chose, avec la <b>même nom de mission</b> que ses astronautes et le <b>code médecin</b>. Le médecin voit tous les astronautes de sa mission (son équipage).</li>
 <li><b>Administration</b> : rôle Administration + <b>code administration</b>. Elle voit tous les astronautes de toutes les missions et la liste des comptes.</li>
 </ol>
-<div class="box">Les codes médecin et administration sont affichés dans la fenêtre noire à chaque démarrage et enregistrés dans <code>data\access_codes.json</code>. Ne les donnez qu'aux personnes autorisées.</div>
+<div class="box">Les codes médecin et administration sont enregistrés dans <code>data\access_codes.json</code>. Ne les donnez qu'aux personnes autorisées.</div>
 <p>Mode démo : codes <code>MED2026</code> et <code>ADMIN2026</code>, comptes prêts <code>A-01</code>, <code>MED-01</code>, <code>ADM-01</code> (mot de passe <code>demo</code>), et boutons « Accès rapide ».</p>
 
 <h2>4. Utiliser l'application</h2>
@@ -95,8 +95,8 @@ POST http://ADRESSE:8000/api/ingest/environment
 <h2>8. Problèmes fréquents</h2>
 <table>
 <tr><th>Symptôme</th><th>Solution</th></tr>
-<tr><td>« Serveur injoignable »</td><td>Vérifiez que la fenêtre noire est ouverte. Sur téléphone : même Wi-Fi, et autorisez le réseau dans le pare-feu Windows.</td></tr>
-<tr><td>La page ne s'ouvre pas</td><td>Le port 8000 est peut-être pris : l'application en choisit un autre, lisez l'adresse dans la fenêtre noire.</td></tr>
+<tr><td>« Serveur injoignable »</td><td>Vérifiez que l'application est ouverte sur le PC. Sur téléphone : même Wi-Fi, et autorisez le réseau dans le pare-feu Windows.</td></tr>
+<tr><td>La page ne s'ouvre pas</td><td>Le port 8000 est peut-être pris : l'application en choisit un autre, lisez l'adresse dans <code>data\nasastro.log</code>.</td></tr>
 <tr><td>Le médecin ne voit personne</td><td>Le nom de mission doit être identique à celui des astronautes. Il faut aussi au moins un astronaute inscrit.</td></tr>
 <tr><td>Corps tout vert / 0 partout</td><td>Aucune mesure reçue : lancez le simulateur ou vérifiez l'envoi des capteurs.</td></tr>
 <tr><td>« Trop de tentatives »</td><td>5 mots de passe faux : attendez 15 minutes.</td></tr>
