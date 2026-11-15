@@ -1,0 +1,7 @@
+Copier ici les fichiers de Steve (guide de branchement, section 3) :
+  interface_logiciel.py, moniteur_sante.py, garde_fou.py, couche_2min.py, couche_nuits_jours.py
+  + le dossier modeles/ (fichiers .joblib et _nuits.json, sans les renommer)
+Puis : pip install -r requirements-ia.txt
+Le nom d'un astronaute dans modeles/ (ex. Bidslab00) doit correspondre à son identifiant (A-01...) :
+sinon créer ia/correspondance.json, ex. {"A-01": "Bidslab00"}.
+Sans ces fichiers, l'appli utilise un MOTEUR DE SECOURS simplifié (garde-fou 30 s + couche 2 min) : l'IA réagit, mais ce n'est pas le vrai modèle.
