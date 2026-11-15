@@ -5,11 +5,12 @@ from typing import Optional
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from . import db, security, service
+from pydantic import BaseModel
+from . import db, ia_cardiaque, security, service
 from .schemas import EnvIn, LoginIn, RegisterIn, VitalsIn
 
 db.init()
-app = FastAPI(title="Jumeau numérique – santé équipage (local)", version="2.0.0")
+app = FastAPI(title="NasAstro – santé équipage (local)", version="2.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("ALLOWED_ORIGINS", "*").split(","),
                    allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 
@@ -31,7 +32,7 @@ def sensor_gateway(x_ingest_key: Optional[str] = Header(None)):
 @app.on_event("startup")
 def banner():
     c = security.access_codes()
-    print("\n=== Jumeau numérique (mode normal) ===")
+    print("\n=== NasAstro (mode normal) ===")
     print("Clé capteurs (header X-Ingest-Key) :", security.ingest_key())
     print("Code création compte MÉDECIN        :", c["doctor"])
     print("Code création compte ADMINISTRATION :", c["admin"], "\n")
@@ -64,6 +65,16 @@ def ingest_bio(d: VitalsIn):
 @app.post("/api/ingest/environment", dependencies=[Depends(sensor_gateway)])
 def ingest_env(d: EnvIn):
     run(service.ingest_env, d.model_dump(mode="json")); return {"status": "success"}
+
+class NightIn(BaseModel):
+    astronaut_id: str
+
+@app.post("/api/ingest/night-end", dependencies=[Depends(sensor_gateway)])
+def night_end(d: NightIn): return run(service.night_end, d.astronaut_id)    # le matin : bilan « nuits et jours » de l'IA
+
+@app.get("/api/ai/status")
+def ai_status(u=Depends(current_user)):
+    return {"moteur_reel": ia_cardiaque.moteur_reel_actif(), "erreur": ia_cardiaque._real_err}
 
 @app.get("/api/astronaut/body-status")
 def body_status(astronaut_id: Optional[str] = None, u=Depends(current_user)):

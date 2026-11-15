@@ -22,10 +22,15 @@ def main():
         if not astros: print("Aucun astronaute inscrit : créez un compte astronaute dans l'application.")
         for a in astros:
             s = st.setdefault(a["id"], dict(hr=72, spo2=98, hrv=50, temp=36.8, resp=15, hyd=92, load=0.5))
-            s["hr"] = walk(s["hr"], 4, 55, 125); s["spo2"] = walk(s["spo2"], 0.8, 91, 100); s["hrv"] = walk(s["hrv"], 4, 15, 75)
+            s["hr"] = s["hr"] + (72 - s["hr"]) * 0.2 + (random.random() - 0.5) * 4    # FC stable autour de 72
+            c = (t * 2) % 360                                                         # cycle de 6 min : 60-105 s = fausse urgence ; 200-340 s = FC élevée soutenue
+            off = 100 if 60 <= c < 105 else 28 if 200 <= c < 340 else 0
+            hr_out = s["hr"] + off
+            if c in (60, 200) and a["id"] == astros[0]["id"]: print(f"[simu] {'FAUSSE URGENCE (FC ~170)' if c == 60 else 'FC élevée soutenue (+28 bpm)'} -> l'IA doit réagir")
+            s["spo2"] = walk(s["spo2"], 0.8, 91, 100); s["hrv"] = walk(s["hrv"], 4, 15, 75)
             s["temp"] = walk(s["temp"], 0.06, 36.3, 37.8); s["resp"] = walk(s["resp"], 1.2, 11, 24)
             s["hyd"] = walk(s["hyd"], 0.4, 82, 98); s["load"] = walk(s["load"], 0.1, 0.05, 0.9)
-            post("/api/ingest/biometrics", dict(astronaut_id=a["id"], heart_rate=round(s["hr"], 1), spo2=round(s["spo2"], 1),
+            post("/api/ingest/biometrics", dict(astronaut_id=a["id"], heart_rate=round(hr_out, 1), spo2=round(s["spo2"], 1),
                  hrv=round(s["hrv"], 1), body_temp=round(s["temp"], 2), skin_temp=round(s["temp"] - 3.5, 1), resp_rate=round(s["resp"]),
                  bp_sys=round(118 + (s["hr"] - 70) * 0.25), bp_dia=round(76 + (s["hr"] - 70) * 0.12),
                  hydration_pct=round(s["hyd"]), muscle_load=round(s["load"], 2)))

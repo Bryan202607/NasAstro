@@ -1,7 +1,7 @@
 """Logique métier (indépendante de FastAPI, donc testable seule)."""
 import re, time
 from datetime import datetime, timezone
-from . import ai, db, security
+from . import ai, db, ia_cardiaque, security
 
 class ServiceError(Exception):
     def __init__(self, status, msg):
@@ -64,7 +64,14 @@ def ingest_vitals(d):
     with db.conn() as c:
         c.execute("INSERT INTO measurements(owner,kind,ts,blob) VALUES(?,?,?,?)",
                   (u["id"], "vitals", time.time(), security.encrypt(d, u["id"])))
+    ev = ia_cardiaque.process(u["id"], u["name"], time.time(), d["heart_rate"])   # IA cardiaque : une mesure à la fois
+    if ev and ev["etat"] in ("JAUNE", "ROUGE", "RETOUR_NORMAL"): _ia_alert(u, ev)
     _check_alert(u)
+
+def night_end(astronaut_id):
+    u = _user(astronaut_id)
+    if not u or u["role"] != "astronaut": raise ServiceError(404, "Astronaute inconnu")
+    return ia_cardiaque.fin_de_nuit(u["id"], u["name"])
 
 def ingest_env(d):
     k = mkey(d["mission"])
@@ -77,9 +84,10 @@ def _load(owner, kind, n):
         d = security.decrypt(r["blob"], owner); d["_ts"] = r["ts"]; out.append(d)
     return out
 
-def status_for(row):
+def status_for(row, with_ia=True):
     env = _load(row["mission_key"], "env", 1)
-    return ai.analyze(public(row), _load(row["id"], "vitals", 120), env[-1] if env else None)
+    st = ai.analyze(public(row), _load(row["id"], "vitals", 120), env[-1] if env else None)
+    return ia_cardiaque.apply_to_status(row["id"], st) if with_ia else st
 
 # ---- lecture avec contrôle d'accès par rôle ----
 def body_status(user, astronaut_id=None):
@@ -111,12 +119,24 @@ def _reasons(st):
 def _known_level(owner):
     if owner not in _last_level:
         with db.conn() as c:
-            r = c.execute("SELECT blob FROM alerts WHERE owner=? ORDER BY ts DESC LIMIT 1", (owner,)).fetchone()
-        _last_level[owner] = security.decrypt(r["blob"], owner)["level"] if r else "green"
+            rows = c.execute("SELECT blob FROM alerts WHERE owner=? ORDER BY ts DESC LIMIT 30", (owner,)).fetchall()
+        lv = "green"
+        for r in rows:                                   # on ignore les alertes de l'IA cardiaque (suivies à part)
+            d = security.decrypt(r["blob"], owner)
+            if not d.get("source"): lv = d["level"]; break
+        _last_level[owner] = lv
     return _last_level[owner]
 
+def _ia_alert(row, ev):
+    """Alerte venue de l'IA cardiaque (JAUNE / ROUGE / retour à la normale), enregistrée chiffrée comme les autres."""
+    lv = {"ROUGE": "red", "JAUNE": "yellow"}.get(ev["etat"], "green")
+    entry = {"name": row["name"], "level": lv, "from": "", "reasons": ["IA cardiaque : " + ev["message"]], "source": "ia_cardiaque", "type": ev.get("type")}
+    with db.conn() as c:
+        c.execute("INSERT INTO alerts(ts,owner,mission_key,blob) VALUES(?,?,?,?)",
+                  (time.time(), row["id"], row["mission_key"], security.encrypt(entry, row["id"])))
+
 def _check_alert(row):
-    st = status_for(row)
+    st = status_for(row, with_ia=False)
     if any(c["cause"] == "capteurs" for c in st["correlations"]): return      # pas de données = pas d'alerte santé
     prev, now_lv = _known_level(row["id"]), st["overall_level"]
     if now_lv == prev: return
