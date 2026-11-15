@@ -1,8 +1,8 @@
 """Lanceur de l'application (point d'entrée de l'exécutable Windows).
-Démarre le serveur local et ouvre l'application dans sa propre fenêtre (comme une vraie appli, sans navigateur).
-Si la fenêtre native est indisponible, le navigateur sert de secours. Affiche aussi l'adresse pour le téléphone.
+Démarre le serveur local et ouvre l'application dans sa propre fenêtre (Edge/Chrome en mode application : ni onglets ni barre d'adresse).
+Option --browser : ouvre un onglet de navigateur normal. Affiche aussi l'adresse pour le téléphone.
 Option : --simulate lance aussi le simulateur de capteurs."""
-import os, socket, sys, threading, time, traceback, webbrowser
+import os, socket, subprocess, sys, threading, time, traceback, webbrowser
 
 FROZEN = getattr(sys, "frozen", False)
 HERE = os.path.dirname(sys.executable) if FROZEN else os.path.dirname(os.path.abspath(__file__))
@@ -26,6 +26,14 @@ def run_sim():
     time.sleep(3)
     import simulate_sensors
     simulate_sensors.main()
+
+def app_browser():
+    """Cherche Edge (présent sur Windows 10/11) puis Chrome, pour ouvrir l'appli dans sa propre fenêtre."""
+    roots = [os.environ.get(k) for k in ("ProgramFiles(x86)", "ProgramFiles", "LocalAppData")]
+    for rel in (r"Microsoft\Edge\Application\msedge.exe", r"Google\Chrome\Application\chrome.exe"):
+        for r in roots:
+            if r and os.path.exists(os.path.join(r, rel)): return os.path.join(r, rel)
+    return None
 
 def start_server(uvicorn, app, port):
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning", log_config=None)
@@ -58,16 +66,19 @@ def main():
     if "--simulate" in sys.argv:
         threading.Thread(target=run_sim, daemon=True).start()
     url = f"http://127.0.0.1:{port}"
-    try:
-        import webview  # fenêtre native (pywebview) : l'appli s'ouvre comme un logiciel
-    except Exception:
-        webview = None
-    if webview and "--browser" not in sys.argv:
-        threading.Thread(target=start_server, args=(uvicorn, app, port), daemon=True).start()
-        wait_server(port)
-        webview.create_window("NasAstro", url, width=1366, height=850, min_size=(980, 640), background_color="#070a10")
-        webview.start()  # rend la main quand on ferme la fenêtre
-        os._exit(0)
+    if "--browser" not in sys.argv:
+        exe = app_browser()
+        if exe:  # fenêtre "application" (sans barre d'adresse ni onglets) : Edge ou Chrome en mode --app
+            threading.Thread(target=start_server, args=(uvicorn, app, port), daemon=True).start()
+            wait_server(port)
+            prof = os.path.join(os.environ["ASTRO_DATA_DIR"], "ui-profile")
+            try:
+                subprocess.Popen([exe, f"--app={url}", f"--user-data-dir={prof}", "--window-size=1366,850", "--no-first-run", "--no-default-browser-check"]).wait()
+                os._exit(0)  # fermer la fenêtre arrête l'application
+            except Exception:
+                traceback.print_exc()
+            webbrowser.open(url)
+            while True: time.sleep(3600)
     threading.Timer(1.5, webbrowser.open, [url]).start()
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning", log_config=None)
 
