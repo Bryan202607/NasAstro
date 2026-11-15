@@ -9,7 +9,7 @@
   var R = global.React, h = R.createElement;
 
   /* ---------- Constantes & helpers ---------- */
-  var LV = { green: "#4fb286", yellow: "#e3a43b", red: "#e5534b" };
+  var LV = { green: "#34d399", yellow: "#fbbf24", red: "#ff4d5e" };
   var LV_FR = { green: "Nominal", yellow: "À surveiller", red: "Critique" };
   var LV_SCORE = { green: 0.15, yellow: 0.55, red: 0.9 };
   var ORDER = { green: 0, yellow: 1, red: 2 };
@@ -40,15 +40,70 @@
     return worst(Z3.map(function (z) { return s.zones[z].level; }).concat(s.radiation.level));
   }
 
+
+  /* ---------- IA cardiaque (démo) : même logique que le moteur de secours du backend (garde-fou 30 s + couche 2 min) ---------- */
+  function med(a) { var q = a.slice().sort(function (x, y) { return x - y; }), m = q.length >> 1; return q.length % 2 ? q[m] : (q[m - 1] + q[m]) / 2; }
+  function createHeartAI(calibS) {
+    var buf = [], calib = [], t0 = null, base = null, urg = false, a2 = null, events = [], hr = null;
+    var cur = { etat: "CALIBRATION", message: "Calibration en cours : l'IA apprend le niveau habituel", type: null, since: new Date().toISOString() };
+    var RANG = { ROUGE: 3, JAUNE: 2, RETOUR_NORMAL: 1 };
+    function iso(ts) { return new Date().toISOString(); }
+    return {
+      step: function (ts, fc) {
+        var out = [], first = t0 === null, w, m, d;
+        hr = fc; if (first) t0 = ts;
+        buf.push([ts, fc]); while (buf.length && ts - buf[0][0] > 120) buf.shift();
+        if (base === null) {
+          calib.push(fc);
+          if (ts - t0 >= calibS && calib.length >= 5) { base = med(calib); out.push({ etat: "VERT", type: "CALIBRATION_FIN", message: "Calibration terminée : niveau habituel " + Math.round(base) + " bpm" }); }
+        }
+        w = buf.filter(function (x) { return ts - x[0] <= 30; }).map(function (x) { return x[1]; });
+        if (ts - buf[0][0] >= 20 && w.length >= 5) {
+          m = med(w); var u = m > 150 || m < 35;
+          if (u && !urg) out.push({ etat: "ROUGE", type: "URGENCE_IMMEDIATE", message: "Urgence : rythme cardiaque extrême (" + Math.round(m) + " bpm)" });
+          if (urg && !u) out.push({ etat: "RETOUR_NORMAL", type: "URGENCE_IMMEDIATE", message: "Fin de l'urgence : le rythme est redevenu normal" });
+          urg = u;
+        }
+        if (base !== null && ts - buf[0][0] >= 90) {
+          m = med(buf.map(function (x) { return x[1]; })); d = m - base;
+          var lv = (Math.abs(d) >= 30 || m > 120 || m < 40) ? "ROUGE" : Math.abs(d) >= 20 ? "JAUNE" : null;
+          if (lv !== a2) {
+            out.push(lv ? { etat: lv, type: "ALERTE_2MIN", message: "Rythme médian sur 2 min : " + Math.round(m) + " bpm (" + (d >= 0 ? "+" : "") + Math.round(d) + " par rapport à son niveau habituel de " + Math.round(base) + ")" }
+                        : { etat: "RETOUR_NORMAL", type: "ALERTE_2MIN", message: "Fin de l'alerte 2 min : le rythme est revenu à son niveau habituel" });
+            a2 = lv;
+          }
+        }
+        if (!out.length) return null;
+        var ev = out.sort(function (x, y) { return (RANG[y.etat] || 0) - (RANG[x.etat] || 0); })[0];
+        cur = { etat: ev.etat === "RETOUR_NORMAL" ? "VERT" : ev.etat, message: ev.message, type: ev.type, since: iso(ts) };
+        events.unshift({ ts: iso(ts), etat: ev.etat, type: ev.type, message: ev.message }); if (events.length > 15) events.pop();
+        return ev;
+      },
+      snapshot: function () {
+        var cal = base === null;
+        return { etat: cur.etat, message: cur.message, type: cur.type, moteur: "demo", since: cur.since, fc: hr, nuit: null, evenements: events.slice(),
+          guardiens: [
+            { nom: "30 secondes", role: "Urgence franche (cœur qui s'emballe ou s'effondre)", etat: urg ? "ROUGE" : "VERT" },
+            { nom: "2 minutes", role: "Écart moyen qui dure", etat: a2 || (cal ? "CALIBRATION" : "VERT") },
+            { nom: "5 minutes", role: "Changements discrets (réseau de neurones)", etat: "INDISPONIBLE" },
+            { nom: "32 minutes", role: "Forme de la courbe (réseau convolutif)", etat: "EN_TEST" },
+            { nom: "Nuits et jours", role: "Dérive lente d'une nuit à l'autre", etat: "EN_ATTENTE" }] };
+      }
+    };
+  }
+
   /* ---------- Mock de l'API (même format que le contrat) ---------- */
-  function createMock(seed) {
+  function createMock(seed, scn) { // scn : undefined = scénarios cardiaques actifs ; false = aucun ; nombre = décalage de départ
+    var n = 0, bhr = 72, ai = createHeartAI(20), phase = typeof scn === "number" ? scn : 0;
     var t = seed || 0, hr = 72, spo2 = 97, hrv = 45, co2 = 900, temp = 22.5, core = 36.8, resp = 15, hyd = 92;
     function walk(v, step, lo, hi) { return Math.max(lo, Math.min(hi, v + (Math.random() - 0.5) * step)); }
     return {
       next: function () {
         t++;
         var spike = (t % 90) > 70; // pic de CO2 périodique
-        hr = walk(hr, 4, 55, 125);
+        n++; var cyc = (n + phase) % 180, off = scn === false ? 0 : (cyc >= 30 && cyc < 52) ? 100 : (cyc >= 100 && cyc < 170) ? 28 : 0; // cycle de 6 min : fausse urgence puis FC élevée
+        bhr = bhr + (72 - bhr) * 0.2 + (Math.random() - 0.5) * 4; hr = bhr + off;
+        ai.step(n * 2, hr);
         spo2 = walk(spo2, 0.8, 90, 99);
         co2 = spike ? Math.min(3000, co2 + 180) : Math.max(800, co2 - 60);
         hrv = walk(hrv + (spike ? -2.5 : 1), 4, 15, 70);
@@ -72,6 +127,12 @@
         function z(k) { return { level: levelOf(sc[k]), score: +sc[k].toFixed(2), reasons: why[k] }; }
         var zones = { head: z("head"), torso: z("torso"), legs: z("legs") };
         var radiation = z("skin");
+        var heartAI = ai.snapshot();
+        if (heartAI.etat === "ROUGE" || heartAI.etat === "JAUNE") { // l'IA cardiaque fait réagir le torse (comme le backend)
+          var tz = zones.torso, lv2 = heartAI.etat === "ROUGE" ? "red" : "yellow";
+          tz.score = Math.max(tz.score, lv2 === "red" ? 0.85 : 0.55); if (ORDER[lv2] > ORDER[tz.level]) tz.level = lv2;
+          tz.reasons = ["IA cardiaque : " + heartAI.message].concat(tz.reasons);
+        }
 
         var correlations = [];
         if (co2 > 2000 && hrv < 35) correlations.push({ zone: "head", cause: "co2", message: "HRV en baisse pendant un pic de CO2 cabine" });
@@ -110,7 +171,7 @@
           vitals: { hr: hr, spo2: spo2, hrv: hrv },
           cabin: { co2_ppm: co2, temp_c: temp },
           correlations: correlations, countermeasures: countermeasures,
-          body: bodyStats, parts: parts
+          body: bodyStats, parts: parts, heart_ai: heartAI
         };
       }
     };
@@ -122,7 +183,7 @@
   ];
 
   function summarize(p, s) {
-    return { astronaut_id: p.id, name: p.name, overall_level: overallLevel(s), zones: s.zones, radiation: s.radiation };
+    return { astronaut_id: p.id, name: p.name, overall_level: overallLevel(s), zones: s.zones, radiation: s.radiation, vitals: s.vitals };
   }
 
   /* ---------- Hooks de données ---------- */
@@ -162,7 +223,7 @@
       vitals: { hr: +(s.vitals && s.vitals.hr) || 0, spo2: +(s.vitals && s.vitals.spo2) || 0, hrv: +(s.vitals && s.vitals.hrv) || 0 },
       cabin: { co2_ppm: +(s.cabin && s.cabin.co2_ppm) || 0, temp_c: +(s.cabin && s.cabin.temp_c) || 0 },
       correlations: s.correlations || [], countermeasures: s.countermeasures || [],
-      body: normBody(s.body), parts: normParts(s.parts)
+      body: normBody(s.body), parts: normParts(s.parts), heart_ai: s.heart_ai || null
     };
   }
 
@@ -203,7 +264,7 @@
     var a = R.useState([]), list = a[0], setList = a[1];
     R.useEffect(function () {
       var alive = true;
-      if (!o.baseUrl && !mocks.current) mocks.current = MOCK_PATIENTS.map(function (p, i) { return createMock(i * 25); });
+      if (!o.baseUrl && !mocks.current) mocks.current = MOCK_PATIENTS.map(function (p, i) { return createMock(i * 25, i === 0 ? 0 : i === 2 ? 90 : false); });
       function load() {
         if (!o.baseUrl) {
           return setList(MOCK_PATIENTS.map(function (p, i) { return summarize(p, mocks.current[i].next()); }));
@@ -226,14 +287,14 @@
   }
 
   /* ---------- Interface (mobile d'abord, sobre) ---------- */
-  var T = { bg: "#0e1013", card: "#181b20", card2: "#20242a", fg: "#eceef1", mut: "#8d949e" };
-  card = { background: T.card, borderRadius: 18, padding: 14 };
+  var T = { bg: "#070a10", card: "#0d121b", card2: "#161e2b", fg: "#e8edf5", mut: "#8493a8" };
+  card = { background: T.card, border: "1px solid rgba(150,180,220,.13)", borderRadius: 10, padding: 14 };
   muted = { color: T.mut, fontSize: 13, lineHeight: 1.4 };
-  var page = { background: T.bg, color: T.fg, padding: "12px 12px 28px", display: "grid", gap: 14, fontFamily: "-apple-system, 'Segoe UI', Roboto, system-ui, sans-serif" };
-  var num = { fontVariantNumeric: "tabular-nums" };
+  var page = { background: T.bg, color: T.fg, padding: "12px 12px 28px", display: "grid", gap: 14, fontFamily: "'Segoe UI', system-ui, -apple-system, Roboto, sans-serif" };
+  var num = { fontVariantNumeric: "tabular-nums", fontFamily: "ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace" };
 
   function Badge(p) {
-    return h("span", { style: { display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.07)", borderRadius: 999, padding: "5px 11px", fontSize: 12, color: T.fg } },
+    return h("span", { style: { display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(150,180,220,.1)", borderRadius: 6, padding: "5px 11px", fontSize: 12, fontWeight: 600, color: T.fg } },
       h("i", { style: { width: 7, height: 7, borderRadius: 4, background: LV[p.level], display: "inline-block" } }), LV_FR[p.level]);
   }
 
@@ -257,14 +318,14 @@
   // pastille de mesure posée sur l'image du mannequin
   function Chip(p) {
     var lv = vLevel(p.kind, p.value);
-    return h("div", { style: { background: "rgba(14,16,19,.66)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", borderRadius: 14, padding: "8px 12px", minWidth: 86 } },
+    return h("div", { style: { background: "rgba(8,11,18,.78)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", borderRadius: 8, padding: "8px 12px", minWidth: 86 } },
       h("div", { style: { fontSize: 11, color: T.mut } }, p.label),
       h("div", { style: ext(num, { fontSize: 22, fontWeight: 600, lineHeight: 1.15 }) }, Math.round(p.value), h("span", { style: { fontSize: 11, color: T.mut, marginLeft: 3, fontWeight: 400 } }, p.unit)),
       h("div", { style: { height: 3, borderRadius: 2, marginTop: 5, background: LV[lv], opacity: lv === "green" ? 0.3 : 1 } }));
   }
 
   function Row(p) {
-    return h("div", { onClick: p.onClick, style: { background: T.card, borderRadius: 16, padding: "12px 14px", display: "flex", gap: 12, alignItems: "flex-start" } },
+    return h("div", { onClick: p.onClick, style: { background: T.card, borderRadius: 10, border: "1px solid rgba(150,180,220,.13)", padding: "12px 14px", display: "flex", gap: 12, alignItems: "flex-start" } },
       h("i", { style: { width: 9, height: 9, borderRadius: 5, background: p.color, marginTop: 6, flex: "none" } }),
       h("div", { style: { minWidth: 0 } }, p.children));
   }
@@ -279,7 +340,7 @@
   }
 
   function Stat(p) {
-    return h("div", { style: { background: T.card, borderRadius: 16, padding: "10px 12px" } },
+    return h("div", { style: { background: T.card, borderRadius: 10, border: "1px solid rgba(150,180,220,.13)", padding: "10px 12px" } },
       h("div", { style: { fontSize: 11, color: T.mut } }, p.label),
       h("div", { style: ext(num, { fontSize: 20, fontWeight: 600, marginTop: 2 }) }, p.value, h("span", { style: { fontSize: 11, color: T.mut, marginLeft: 3, fontWeight: 400 } }, p.unit)),
       h("div", { style: { height: 3, borderRadius: 2, marginTop: 6, background: LV[p.level], opacity: p.level === "green" ? 0.3 : 1 } }));
@@ -312,7 +373,7 @@
   }
 
   function VariantToggle(p) {
-    return h("div", { style: { display: "inline-flex", background: "rgba(14,16,19,.66)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", borderRadius: 999, padding: 3, pointerEvents: "auto" } },
+    return h("div", { style: { display: "inline-flex", background: "rgba(8,11,18,.78)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", borderRadius: 999, padding: 3, pointerEvents: "auto" } },
       [["mannequin", "Mannequin"], ["suit", "Combinaison"]].map(function (o) {
         var on = p.value === o[0];
         return h("button", { key: o[0], onClick: function () { p.onChange(o[0]); }, style: { border: 0, borderRadius: 999, padding: "5px 11px", fontSize: 12, cursor: "pointer", background: on ? "#2a2f37" : "transparent", color: on ? T.fg : T.mut } }, o[1]);
@@ -320,9 +381,9 @@
   }
 
   function useWide() {
-    var s = R.useState(window.innerWidth >= 900), w = s[0], set = s[1];
+    var s = R.useState(window.innerWidth >= 1180), w = s[0], set = s[1];
     R.useEffect(function () {
-      function f() { set(window.innerWidth >= 900); }
+      function f() { set(window.innerWidth >= 1180); }
       window.addEventListener("resize", f);
       return function () { window.removeEventListener("resize", f); };
     }, []);
@@ -340,6 +401,42 @@
       h(Spark, { values: p.values, color: LV[lv] }));
   }
 
+
+  /* ---------- Panneau « IA cardiaque » : montre comment l'IA réagit ---------- */
+  var AI_COL = { VERT: LV.green, RETOUR_NORMAL: LV.green, JAUNE: LV.yellow, ROUGE: LV.red, CALIBRATION: "#5eb1ff", INDISPONIBLE: "#5b626c", EN_TEST: "#5b626c", EN_ATTENTE: "#5b626c", IGNOREE: "#5b626c" };
+  var AI_FR = { VERT: "Normal", RETOUR_NORMAL: "Retour normal", JAUNE: "À surveiller", ROUGE: "ALERTE", CALIBRATION: "Calibration", INDISPONIBLE: "Non disponible", EN_TEST: "En test", EN_ATTENTE: "En attente", IGNOREE: "Ignorée" };
+  var AI_MOTEUR = { reel: "Modèle appris", secours: "Moteur de secours · démo", demo: "Simulation · démo" };
+
+  function HeartAIPanel(p) {
+    var a = p.ai, col = AI_COL[a.etat] || T.mut, hot = a.etat === "ROUGE" || a.etat === "JAUNE";
+    function hhmmss(iso) { try { return new Date(iso).toLocaleTimeString("fr-FR"); } catch (e) { return ""; } }
+    return h("div", { style: { display: "grid", gap: 8 } },
+      h("div", { style: { fontSize: 13, color: T.mut, padding: "0 4px", letterSpacing: 0.3, display: "flex", justifyContent: "space-between", alignItems: "center" } },
+        h("span", null, "IA CARDIAQUE"),
+        h("span", { style: { fontSize: 11, background: "rgba(255,255,255,.07)", borderRadius: 999, padding: "3px 9px" } }, AI_MOTEUR[a.moteur] || a.moteur)),
+      h("div", { style: ext(card, { border: "1px solid " + (hot ? col : "transparent"), boxShadow: a.etat === "ROUGE" ? "0 0 0 3px rgba(229,83,75,.25)" : "none", transition: "all .3s" }) },
+        h("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+          h("i", { style: { width: 12, height: 12, borderRadius: 6, background: col, flex: "none" } }),
+          h("div", { style: { fontSize: 20, fontWeight: 700, color: hot ? col : T.fg, flex: 1 } }, AI_FR[a.etat] || a.etat),
+          a.fc != null ? h("div", { style: ext(num, { fontSize: 14, color: T.mut }) }, Math.round(a.fc) + " bpm") : null),
+        h("div", { style: { fontSize: 14, marginTop: 6, lineHeight: 1.4 } }, a.message),
+        h("div", { style: { marginTop: 12, display: "grid", gap: 6 } },
+          (a.guardiens || []).map(function (g) {
+            return h("div", { key: g.nom, title: g.role, style: { display: "flex", alignItems: "center", gap: 8, fontSize: 12 } },
+              h("i", { style: { width: 7, height: 7, borderRadius: 4, background: AI_COL[g.etat] || T.mut, flex: "none" } }),
+              h("span", { style: { flex: 1 } }, "Gardien " + g.nom),
+              h("span", { style: { color: g.etat === "ROUGE" || g.etat === "JAUNE" ? AI_COL[g.etat] : T.mut } }, AI_FR[g.etat] || g.etat));
+          })),
+        h("div", { style: { marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,.06)" } },
+          h("div", { style: { fontSize: 11, color: T.mut, marginBottom: 6 } }, "Dernières réactions de l’IA"),
+          (a.evenements || []).length ? a.evenements.slice(0, 5).map(function (e, i) {
+            return h("div", { key: i, style: { display: "flex", gap: 8, fontSize: 12, padding: "3px 0", alignItems: "baseline" } },
+              h("span", { style: ext(num, { color: T.mut, flex: "none" }) }, hhmmss(e.ts)),
+              h("b", { style: { color: AI_COL[e.etat] || T.fg, flex: "none" } }, AI_FR[e.etat] || e.etat),
+              h("span", { style: { color: T.mut } }, e.message));
+          }) : h("div", { style: muted }, "Aucun événement : l’IA surveille."))));
+  }
+
   // props : baseUrl, token, astronautId, onBack
   function TwinDashboard(p) {
     var r = useBodyStatus(p), s = r.data, wide = useWide();
@@ -354,6 +451,7 @@
     var alerts = items.filter(function (i) { return i.z.level !== "green"; })
       .sort(function (a, b) { return ORDER[b.z.level] - ORDER[a.z.level] || b.z.score - a.z.score; });
     var label = { fontSize: 13, color: T.mut, padding: "0 4px", letterSpacing: 0.3 };
+    var aiPanel = s.heart_ai ? h(HeartAIPanel, { ai: s.heart_ai }) : null;
 
     var head = h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px" } },
       h("div", null,
@@ -363,7 +461,7 @@
       h(Badge, { level: lvl }));
 
     var caption = h("div", { style: { position: "absolute", left: 0, right: 0, bottom: 12, textAlign: "center", pointerEvents: "none" } },
-      h("span", { style: { background: "rgba(14,16,19,.66)", borderRadius: 999, padding: "6px 14px", fontSize: 12, color: zone ? T.fg : T.mut } },
+      h("span", { style: { background: "rgba(8,11,18,.78)", borderRadius: 999, padding: "6px 14px", fontSize: 12, color: zone ? T.fg : T.mut } },
         zone ? ZONE_FR[zone] + " · " + LV_FR[s.zones[zone].level] : (wide ? "Cliquez sur le corps pour une zone" : "Touchez le corps pour une zone")));
 
     function chips(side) {
@@ -373,7 +471,7 @@
       return h("div", { style: o }, L.map(function (c) { return h(Chip, { key: c[0], kind: c[0], label: c[1], unit: c[2], value: c[3] }); }));
     }
 
-    var hero = h("div", { style: { position: "relative", height: wide ? "calc(100vh - 140px)" : "min(64vh, 520px)", minHeight: wide ? 520 : 380, borderRadius: 26, overflow: "hidden", background: "radial-gradient(ellipse at 50% 38%, #2b3038 0%, #171a1f 62%, #121418 100%)" } },
+    var hero = h("div", { style: { position: "relative", height: wide ? "calc(100vh - 150px)" : "min(64vh, 520px)", minHeight: wide ? 520 : 380, borderRadius: 14, border: "1px solid rgba(150,180,220,.22)", overflow: "hidden", background: "radial-gradient(ellipse at 50% 38%, #1b2433 0%, #0a0e16 62%, #121418 100%)" } },
       h(global.AstroTwin.BodyTwinView, { risks: tw.risks, radiation: tw.radiation, selectedZone: zone, onSelectZone: setZone, variant: variant }),
       wide ? null : chips("l"), wide ? null : chips("r"),
       h("div", { style: { position: "absolute", left: 0, right: 0, top: 12, textAlign: "center", pointerEvents: "none" } }, h(VariantToggle, { value: variant, onChange: setVariant })),
@@ -394,16 +492,16 @@
     if (wide) {
       var V = [["hr", "Fréquence cardiaque", "bpm", s.vitals.hr, H.hr], ["spo2", "Oxygène (SpO₂)", "%", s.vitals.spo2, H.spo2],
                ["hrv", "Variabilité cardiaque", "ms", s.vitals.hrv, H.hrv], ["co2", "CO₂ cabine", "ppm", s.cabin.co2_ppm, H.co2]];
-      return h("div", { style: ext(page, { maxWidth: 1440, margin: "0 auto", padding: "16px 24px 24px" }) },
+      return h("div", { style: ext(page, { maxWidth: 1920, margin: "0 auto", padding: "18px 26px 26px" }) },
         head,
-        h("div", { style: { display: "grid", gridTemplateColumns: "290px minmax(0,1fr) 380px", gap: 16, alignItems: "start" } },
+        h("div", { style: { display: "grid", gridTemplateColumns: "300px minmax(0,1fr) 410px", gap: 16, alignItems: "start" } },
           h("div", { style: { display: "grid", gap: 12 } }, V.map(function (v) { return h(VitalCard, { key: v[0], kind: v[0], label: v[1], unit: v[2], value: v[3], values: v[4] }); })),
           hero,
-          h("div", { style: { display: "grid", gap: 10 } }, corr, h("div", { style: label }, "À SURVEILLER"), alertRows, h(BodyPanel, { s: s, onZone: setZone }))));
+          h("div", { style: { display: "grid", gap: 10 } }, aiPanel, corr, h("div", { style: label }, "À SURVEILLER"), alertRows, h(BodyPanel, { s: s, onZone: setZone }))));
     }
 
     return h("div", { style: ext(page, { maxWidth: 520, margin: "0 auto" }) },
-      head, hero, corr,
+      head, hero, aiPanel, corr,
       h("div", { style: label }, "À SURVEILLER"), alertRows,
       h(BodyPanel, { s: s, onZone: setZone }),
       h("div", { style: label }, "TENDANCES"),
@@ -422,7 +520,7 @@
     var sorted = list.slice().sort(function (a, b) { return ORDER[b.overall_level] - ORDER[a.overall_level]; });
     var nRed = sorted.filter(function (x) { return x.overall_level === "red"; }).length;
     var nYel = sorted.filter(function (x) { return x.overall_level === "yellow"; }).length;
-    return h("div", { style: ext(page, wide ? { maxWidth: 1440, margin: "0 auto", padding: "16px 24px 24px", minHeight: "calc(100vh - 60px)", alignContent: "start" } : { maxWidth: 520, margin: "0 auto" }) },
+    return h("div", { style: ext(page, wide ? { maxWidth: 1920, margin: "0 auto", padding: "18px 26px 26px", minHeight: "calc(100vh - 60px)", alignContent: "start" } : { maxWidth: 520, margin: "0 auto" }) },
       h("div", { style: { padding: "0 4px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" } },
         h("div", null,
           h("div", { style: { fontSize: 20, fontWeight: 600 } }, "Équipage"),
@@ -438,7 +536,7 @@
               h(Badge, { level: x.overall_level }),
               h("div", { style: { display: "flex", gap: 5 } },
                 dots.map(function (l, i) { return h("i", { key: i, style: { width: 9, height: 9, borderRadius: 5, background: LV[l], display: "inline-block", opacity: l === "green" ? 0.45 : 1 } }); }))),
-            h("div", { style: { marginTop: 10, borderRadius: 16, overflow: "hidden", background: "radial-gradient(ellipse at 50% 40%, #2b3038 0%, #171a1f 70%)" } },
+            h("div", { style: { marginTop: 10, borderRadius: 16, overflow: "hidden", background: "radial-gradient(ellipse at 50% 40%, #1b2433 0%, #0a0e16 70%)" } },
               h(global.AstroTwin.BodyPreview, { variant: variant, risks: tw.risks, radiation: tw.radiation, height: wide ? 280 : 210 })));
         })));
   }

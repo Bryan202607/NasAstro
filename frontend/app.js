@@ -88,16 +88,25 @@
   /* ================= Petits composants ================= */
   function Logo(p) {
     var s = p.size || 32;
-    return h("svg", { width: s, height: s, viewBox: "0 0 48 48", "aria-hidden": "true" },
-      h("defs", null, h("linearGradient", { id: "lg", x1: 0, y1: 0, x2: 1, y2: 1 }, h("stop", { offset: 0, stopColor: "#4fb286" }), h("stop", { offset: 1, stopColor: "#6ea8ff" }))),
-      h("circle", { cx: 24, cy: 24, r: 8, fill: "url(#lg)" }),
-      h("ellipse", { cx: 24, cy: 24, rx: 20, ry: 8, fill: "none", stroke: "url(#lg)", strokeWidth: 2.2, transform: "rotate(-28 24 24)" }),
-      h("circle", { cx: 41, cy: 15, r: 2.6, fill: "#eceef1" }));
+    return h("svg", { width: s, height: s, viewBox: "0 0 512 512", "aria-hidden": "true" },
+      h("defs", null,
+        h("linearGradient", { id: "lgS", x1: 0.15, y1: 0, x2: 0.85, y2: 1 }, h("stop", { offset: 0, stopColor: "#fbf8f1" }), h("stop", { offset: 1, stopColor: "#b9bec8" })),
+        h("linearGradient", { id: "lgV", x1: 0.1, y1: 0, x2: 0.9, y2: 1 }, h("stop", { offset: 0, stopColor: "#f3c35f" }), h("stop", { offset: 0.45, stopColor: "#b8741f" }), h("stop", { offset: 1, stopColor: "#2a1a08" })),
+        h("clipPath", { id: "lgF" }, h("rect", { x: -100, y: 262, width: 720, height: 400 }))),
+      h("g", { transform: "rotate(-22 256 266)" }, h("ellipse", { cx: 256, cy: 266, rx: 196, ry: 58, fill: "none", stroke: "#ff6b35", strokeWidth: 15, opacity: 0.55 })),
+      h("path", { d: "M150 392q0-40 36-52h140q36 12 36 52v22H150z", fill: "url(#lgS)" }),
+      h("circle", { cx: 256, cy: 246, r: 128, fill: "url(#lgS)" }),
+      h("rect", { x: 148, y: 170, width: 216, height: 152, rx: 76, fill: "#1a1d24" }),
+      h("rect", { x: 156, y: 178, width: 200, height: 136, rx: 68, fill: "url(#lgV)" }),
+      h("path", { d: "M176 250h42l16-34 26 74 22-52 14 12h40", fill: "none", stroke: "#fff6dc", strokeWidth: 10, strokeLinecap: "round", strokeLinejoin: "round" }),
+      h("g", { transform: "rotate(-22 256 266)" }, h("g", { clipPath: "url(#lgF)" }, h("ellipse", { cx: 256, cy: 266, rx: 196, ry: 58, fill: "none", stroke: "#ff6b35", strokeWidth: 15 }))),
+      h("circle", { cx: 425, cy: 212, r: 19, fill: "#5eb1ff", stroke: "#e8edf5", strokeWidth: 4 }));
   }
   var ICONS = {
     server: "M4 5h16v6H4zM4 13h16v6H4zM7 8h.01M7 16h.01", play: "M8 5v14l11-7z", arrow: "M5 12h14M13 6l6 6-6 6",
     bell: "M6 8a6 6 0 0112 0c0 7 3 8 3 8H3s3-1 3-8M10 21h4", sound: "M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13",
-    mute: "M11 5L6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6", file: "M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M8 13h8M8 17h8"
+    mute: "M11 5L6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6", grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", users: "M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2 20c0-3.5 3-6 7-6s7 2.5 7 6M17 4.5a3.5 3.5 0 010 6.5M22 20c0-2.6-1.6-4.6-4-5.5", log: "M5 3h14v18H5zM9 8h6M9 12h6M9 16h4", heart: "M12 21s-7-4.5-9-9a5 5 0 019-3 5 5 0 019 3c-2 4.5-9 9-9 9z",
+    cube: "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5", shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", file: "M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M8 13h8M8 17h8"
   };
   function Icon(p) {
     return h("svg", { width: p.size || 18, height: p.size || 18, viewBox: "0 0 24 24", fill: p.fill ? "currentColor" : "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, h("path", { d: ICONS[p.n] }));
@@ -131,31 +140,115 @@
     return out;
   }
 
-  /* ================= Accueil ================= */
+  /* ================= Accueil (PC : 2 colonnes avec jumeau 3D animé) ================= */
+  function useViewport() {
+    var f = function () { return { w: window.innerWidth || 1280, h: window.innerHeight || 800 }; };
+    var s = R.useState(f), v = s[0], set = s[1];
+    R.useEffect(function () {
+      if (!window.addEventListener) return;
+      function on() { set(f()); }
+      window.addEventListener("resize", on);
+      return function () { window.removeEventListener("resize", on); };
+    }, []);
+    return v;
+  }
+
+  // scénarios d'illustration (z = risque tête, torse, jambes, radiations)
+  var SCEN = [
+    { name: "Nominal", note: "Tous les paramètres sont dans la normale.", z: [0.12, 0.1, 0.1, 0.06], hr: 72, spo2: 98, co2: 900, rad: 0.02 },
+    { name: "CO₂ cabine en hausse", note: "Le CO₂ monte : la tête passe en surveillance.", z: [0.55, 0.15, 0.1, 0.06], hr: 78, spo2: 97, co2: 2600, rad: 0.02 },
+    { name: "Effort cardiaque", note: "FC et SpO₂ dégradées : alerte critique sur le torse.", z: [0.3, 0.85, 0.12, 0.06], hr: 121, spo2: 92, co2: 1100, rad: 0.03 },
+    { name: "Pic de radiation", note: "Dose élevée : mise à l'abri conseillée.", z: [0.15, 0.15, 0.1, 0.8], hr: 80, spo2: 97, co2: 950, rad: 0.27 }
+  ];
+  function lvl(sc) { return sc < 0.4 ? "ok" : sc < 0.7 ? "warn" : "bad"; }
+
+  function LiveTwin(p) {
+    var a = R.useState(0), i = a[0], setI = a[1], b = R.useState(0), tick = b[0], setTick = b[1];
+    R.useEffect(function () {
+      var t1 = setInterval(function () { setTick(function (x) { return x + 1; }); }, 1100);
+      var t2 = setInterval(function () { setI(function (x) { return (x + 1) % SCEN.length; }); }, 5200);
+      return function () { clearInterval(t1); clearInterval(t2); };
+    }, []);
+    var s = SCEN[i], j = function (k, amp) { return Math.sin(tick * 1.7 + k) * amp; };
+    var hr = Math.round(s.hr + j(1, 2.5)), spo2 = Math.round(Math.min(100, s.spo2 + j(2, 0.7)));
+    var co2 = Math.round(s.co2 + j(3, 40)), rad = (s.rad + j(4, 0.004)).toFixed(3);
+    function tm(pos, label, level, body, extra) {
+      return h("div", { className: "tm " + pos + " " + level }, h("small", null, label), h("b", { className: "mono" }, body), extra || null);
+    }
+    return h("div", { className: "twin" },
+      h("div", { className: "ring r1" }), h("div", { className: "ring r2" }),
+      h(A_().BodyPreview, { key: p.height, variant: "suit", risks: { head: s.z[0], torso: s.z[1], legs: s.z[2] }, radiation: s.z[3], height: p.height }),
+      h("div", { className: "sim" }, "Simulation d'illustration"),
+      tm("tl", "Fréquence cardiaque", lvl(s.z[1]), [hr, h("em", { key: "u" }, "bpm")],
+        h("svg", { className: "ecg", viewBox: "0 0 120 28", "aria-hidden": "true" }, h("path", { d: "M0 14h20l4-8 5 18 5-26 5 22 4-6h16l4-4 5 8 3-4h24" }))),
+      tm("tr", "SpO₂", lvl(s.z[1]), [spo2, h("em", { key: "u" }, "%")]),
+      tm("bl", "CO₂ cabine", lvl(s.z[0]), [co2, h("em", { key: "u" }, "ppm")]),
+      tm("br", "Rayonnement", lvl(s.z[3]), [rad, h("em", { key: "u" }, "mGy/h")]),
+      h("div", { className: "cap" }, h("span", { className: "dot " + (Math.max.apply(null, s.z) < 0.4 ? "ok" : Math.max.apply(null, s.z) < 0.7 ? "warn" : "bad") }),
+        h("b", null, s.name), h("span", { className: "hint hide-m" }, s.note),
+        h("span", { className: "pips" }, SCEN.map(function (x, k) { return h("i", { key: k, className: k === i ? "on" : "" }); }))));
+  }
+  function A_() { return window.AstroTwin; }
+
+  function Stage(p) {
+    var th = Math.max(300, Math.min(500, Math.round(p.vp.h * 0.44 / 40) * 40));
+    var feats = [["cube", "Jumeau 3D", "Zones du corps colorées selon le risque"], ["bell", "Alertes en direct", "Bandeau, son et historique"],
+                 ["shield", "Chiffré AES-256", "Données médicales protégées"], ["server", "100 % local", "Rien ne part sur Internet"]];
+    return h("aside", { className: "l-stage" },
+      h("div", { className: "aurora" }),
+      h("div", { className: "l-top" },
+        h("div", { className: "brand" }, h(Logo, { size: 38 }), h("div", null, h("b", null, "NasAstro"), h("small", null, "Santé de l'équipage"))),
+        h("a", { className: "link", href: "guide.html", target: "_blank" }, "Guide d'utilisation")),
+      h("div", { className: "l-mid" },
+        h("h1", { className: "l-h1" }, "La santé de l'équipage, ", h("span", { className: "grad" }, "en temps réel"), "."),
+        h("p", { className: "l-sub" }, "Un jumeau 3D alimenté par les capteurs de la combinaison et de la cabine, analysé par une IA qui tourne hors ligne. Vos données ne quittent jamais votre machine."),
+        h(LiveTwin, { height: th })),
+      h("div", { className: "l-feats" }, feats.map(function (f) {
+        return h("div", { key: f[0], className: "feat-i" }, h("div", { className: "fi" }, h(Icon, { n: f[0], size: 18 })), h("div", null, h("b", null, f[1]), h("span", null, f[2])));
+      })));
+  }
+
+  // PC : colonne gauche (jumeau animé, reste en place) + colonne droite (contenu). Mobile : contenu seul.
+  function Shell(p) {
+    var vp = useViewport();
+    if (vp.w < 960) return p.children;
+    return h("div", { className: "landing" }, h(Stage, { vp: vp }), h("main", { className: "l-panel" }, h("div", { className: "l-card" }, p.children)));
+  }
+
   function ModeSelect(p) {
-    function card(cls, icon, title, badge, text, mode) {
+    var vp = useViewport(), wide = vp.w >= 960;
+    R.useEffect(function () { // raccourcis clavier PC : 1 = normal, 2 = démo
+      if (!window.addEventListener || !wide) return;
+      function key(e) { var t = (e.target && e.target.tagName) || ""; if (/INPUT|TEXTAREA|SELECT/.test(t)) return; if (e.key === "1") p.onPick("normal"); if (e.key === "2") p.onPick("demo"); }
+      window.addEventListener("keydown", key);
+      return function () { window.removeEventListener("keydown", key); };
+    }, [wide]);
+    function card(cls, icon, title, badge, text, ticks, mode, k) {
       return h("button", { className: "mode " + cls, onClick: function () { p.onPick(mode); } },
         h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
           h("div", { className: "ic" }, h(Icon, { n: icon, size: 22, fill: icon === "play" })),
-          h("span", { className: "chip solid " + (mode === "normal" ? "ok" : "warn") }, badge)),
+          h("div", { style: { display: "flex", gap: 8, alignItems: "center" } }, h("span", { className: "chip solid " + (mode === "normal" ? "ok" : "warn") }, badge), wide ? h("kbd", null, k) : null)),
         h("h3", null, title), h("p", null, text),
+        wide ? h("ul", { className: "ticks" }, ticks.map(function (t) { return h("li", { key: t }, t); })) : null,
         h("div", { className: "go" }, "Ouvrir ", h(Icon, { n: "arrow", size: 16 })));
     }
-    return h("div", { className: "wrap narrow screen" },
-      h("div", { className: "hero" },
-        h("div", { className: "logo" }, h(Logo, { size: 68 })),
-        h("h1", null, "Jumeau numérique"),
-        h("p", null, "Santé de l'équipage en temps réel : jumeau 3D, IA locale, données qui restent sur votre machine.")),
+    return h("div", { className: wide ? "pane" : "wrap narrow screen" },
+      wide
+        ? h("div", { className: "p-head" }, h("h2", null, "Bienvenue"), h("p", null, "Choisissez comment utiliser l'application."))
+        : h("div", { className: "hero" }, h("div", { className: "logo" }, h(Logo, { size: 104 })), h("h1", null, "NasAstro"),
+            h("p", null, "Santé de l'équipage en temps réel : jumeau 3D, IA locale, données qui restent sur votre machine.")),
       h("div", { className: "modes" },
-        card("normal", "server", "Mode normal", "DONNÉES RÉELLES", "Serveur local : comptes, capteurs de la combinaison et de la cabine, alertes, base chiffrée.", "normal"),
-        card("demo", "play", "Mode démo", "SIMULÉ", "Sans serveur, directement dans le navigateur. Idéal pour présenter l'application.", "demo")),
-      h("div", { className: "feat" }, ["Hors ligne", "Chiffré AES-256", "IA locale", "PC + téléphone"].map(function (t) { return h("span", { key: t, className: "chip" }, t); })),
-      h("div", { className: "foot" }, h("a", { href: "guide.html", target: "_blank" }, "Guide d'utilisation"), " · Prototype, ne remplace pas un dispositif médical"));
+        card("normal", "server", "Mode normal", "DONNÉES RÉELLES", "Serveur local : comptes, capteurs de la combinaison et de la cabine, alertes, base chiffrée.",
+          ["Comptes et rôles : astronaute, médecin, administration", "Capteurs réels, alertes enregistrées", "Base locale chiffrée AES-256-GCM"], "normal", "1"),
+        card("demo", "play", "Mode démo", "SIMULÉ", "Sans serveur, directement dans le navigateur. Idéal pour présenter l'application.",
+          ["Aucune installation ni serveur", "Capteurs simulés et comptes d'essai", "Parfait pour présenter ou tester"], "demo", "2")),
+      wide ? null : h("div", { className: "feat" }, ["Hors ligne", "Chiffré AES-256", "IA locale", "PC + téléphone"].map(function (t) { return h("span", { key: t, className: "chip" }, t); })),
+      h("div", { className: "foot" }, wide ? null : h("span", null, h("a", { href: "guide.html", target: "_blank" }, "Guide d'utilisation"), " · "), "Prototype, ne remplace pas un dispositif médical"));
   }
 
   /* ================= Connexion / inscription ================= */
   function Auth(p) {
-    var isN = p.mode === "normal";
+    var isN = p.mode === "normal", vp = useViewport(), cls = vp.w >= 960 ? "pane" : "wrap narrow screen";
     var m = R.useState("login"), tab = m[0], setTab = m[1];
     var f = R.useState({ id: "", pass: "", name: "", age: "", mission: "", role: "astronaut", code: "" }), v = f[0], setV = f[1];
     var e = R.useState(""), err = e[0], setErr = e[1];
@@ -180,7 +273,7 @@
     }
     function submit(ev) { ev.preventDefault(); go(tab === "login" ? adapter.login(v.id, v.pass) : adapter.register(v)); }
 
-    return h("div", { className: "wrap narrow screen" },
+    return h("div", { className: cls },
       h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 } },
         h("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, h(Logo, { size: 34 }),
           h("div", null, h("b", null, isN ? "Mode normal" : "Mode démo"), h("div", { className: "hint" }, isN ? "Données réelles, stockage local chiffré" : "Données simulées"))),
@@ -265,6 +358,47 @@
     }));
   }
 
+
+  /* ---------- Mise en page PC : barre latérale + zone de travail ---------- */
+  function Side(p) {
+    var clock = useClock(), isN = p.s.mode === "normal", u = p.s.user;
+    return h("aside", { className: "side" },
+      h("div", { className: "side-brand" }, h(Logo, { size: 34 }), h("div", null, h("b", null, "NasAstro"), h("small", null, "Santé équipage"))),
+      h("nav", { className: "nav", "aria-label": "Navigation" }, p.nav.map(function (n, i) {
+        return h("button", { key: n[0], className: cx("nav-i", p.active === n[0] && "on"), onClick: function () { p.onNav(n[0]); } },
+          h(Icon, { n: { crew: "grid", alerts: "bell", users: "users", audit: "log", twin: "cube" }[n[0]] || "grid", size: 18 }),
+          h("span", { className: "grow" }, n[1]), n[2] ? h("span", { className: "badge" }, n[2]) : null, h("kbd", null, i + 1));
+      })),
+      h("div", { className: "side-foot" },
+        h("div", { className: "who" }, h("b", null, u.name), h("small", null, ROLE_FR[u.role] + (u.mission ? " · " + u.mission : "")), h("small", { className: "mono" }, u.id)),
+        h("div", { className: "side-row" }, h("span", { className: "chip mono" }, "UTC " + clock), h("span", { className: "chip solid " + (isN ? "ok" : "warn") }, isN ? "RÉEL" : "DÉMO")),
+        h("button", { className: "btn ghost sm block", onClick: p.onLogout }, "Quitter")));
+  }
+  // PC (≥ 900 px) : barre latérale, raccourcis clavier 1-4. Petit écran : barre du haut + onglets.
+  function Layout(p) {
+    var vp = useViewport(), ref = R.useRef(p); ref.current = p;
+    R.useEffect(function () {
+      function key(e) {
+        var t = (e.target && e.target.tagName) || "";
+        if (/INPUT|TEXTAREA|SELECT/.test(t) || e.ctrlKey || e.metaKey || e.altKey) return;
+        var i = +e.key - 1, c = ref.current;
+        if (i >= 0 && i < c.nav.length) c.onNav(c.nav[i][0]);
+      }
+      window.addEventListener("keydown", key);
+      return function () { window.removeEventListener("keydown", key); };
+    }, []);
+    if (vp.w >= 900) return h("div", { className: "app" }, h(Side, p), h("main", { className: "main" }, p.children));
+    return h("div", null, h(Topbar, { s: p.s, onLogout: p.onLogout }),
+      p.nav.length > 1 ? h("div", { className: "tabs", role: "tablist" }, p.nav.map(function (x) {
+        return h("button", { key: x[0], role: "tab", "aria-selected": p.active === x[0], className: cx("tab", p.active === x[0] && "on"), onClick: function () { p.onNav(x[0]); } },
+          x[1], x[2] ? h("span", { className: "badge" }, x[2]) : null);
+      })) : null, p.children);
+  }
+  function Head(p) {
+    return h("div", { className: "pagehead" }, h("div", null, h("h1", null, p.title), h("div", { className: "hint" }, p.sub)),
+      h("div", { className: "ph-actions" }, p.children));
+  }
+
   function AstroCard(p) {
     var x = p.x, tw = A.toTwinProps(x), why = whyOf(x);
     var zones = [["head", x.zones.head.level], ["torso", x.zones.torso.level], ["legs", x.zones.legs.level], ["radiation", x.radiation.level]];
@@ -272,7 +406,7 @@
       h("div", { className: "ac-head" },
         h("div", null, h("div", { className: "ac-name" }, x.name), h("div", { className: "ac-id mono" }, x.astronaut_id)),
         h("span", { className: "chip " + LV_CLS[x.overall_level] }, LV_FR[x.overall_level])),
-      h("div", { className: "ac-3d" }, h(A.BodyPreview, { variant: "suit", risks: tw.risks, radiation: tw.radiation, height: 170 })),
+      h("div", { className: "ac-3d" }, h(A.BodyPreview, { variant: "suit", risks: tw.risks, radiation: tw.radiation, height: 210 })),
       h("div", { className: "zdots" }, zones.map(function (z) { return h("span", { key: z[0] }, h("i", { className: z[1] }), ZONE_FR[z[0]]); })),
       x.vitals && x.vitals.hr ? h("div", { className: "ac-v mono" }, "♥ " + Math.round(x.vitals.hr) + " bpm · SpO₂ " + Math.round(x.vitals.spo2) + " %") : null,
       h("div", { className: "ac-why" }, why.length ? why.slice(0, 2).join(" · ") : "Aucun écart détecté"));
@@ -312,11 +446,12 @@
   }
 
   function CrewView(p) {
-    var s = p.s, isAdmin = s.user.role === "admin", conn = connProps(s);
+    var s = p.s, isAdmin = s.user.role === "admin", conn = connProps(s), vp = useViewport(), wide = vp.w >= 1100;
     var pl = A.usePatients(Object.assign({ everyMs: 3000 }, conn));
     var t = R.useState("crew"), tab = t[0], setTab = t[1];
     var sl = R.useState(null), sel = sl[0], setSel = sl[1];
     var sd = R.useState(lsGet(KSND, "1") === "1"), sound = sd[0], setSound = sd[1];
+    var vw = R.useState(lsGet("astro.view", "cards")), view = vw[0], setView = vw[1];
     var ts = R.useState(""), toast = ts[0], setToast = ts[1];
     var alerts = useAlerts(s, pl), prev = R.useRef({});
 
@@ -329,53 +464,73 @@
       }
     }, [pl]);
     R.useEffect(function () { if (!toast) return; var id = setTimeout(function () { setToast(""); }, 6000); return function () { clearTimeout(id); }; }, [toast]);
+    R.useEffect(function () { // Échap : retour à la liste
+      function key(e) { if (e.key === "Escape") setSel(null); }
+      window.addEventListener("keydown", key); return function () { window.removeEventListener("keydown", key); };
+    }, []);
 
+    var critAlerts = alerts.filter(function (a) { return a.level === "red"; }).length;
+    var nav = [["crew", "Équipage"], ["alerts", "Alertes", critAlerts || null]].concat(isAdmin ? [["users", "Comptes"], ["audit", "Journal d'accès"]] : []);
+    function go(k) { setSel(null); setTab(k); }
     function open(id) { setSel(id); if (s.mode === "demo") addDemoAudit(s.user.id, id); }
-    if (sel) return h(A.TwinDashboard, Object.assign({ variant: "suit", astronautId: sel, onBack: function () { setSel(null); } }, conn));
+    function shell(children) { return h(Layout, { s: s, onLogout: p.onLogout, nav: nav, active: tab, onNav: go }, children, toast ? h("div", { className: "toast", role: "alert" }, toast) : null); }
+    if (sel) return shell(h(A.TwinDashboard, Object.assign({ variant: "suit", astronautId: sel, onBack: function () { setSel(null); } }, conn)));
 
     var sorted = pl.slice().sort(function (a, b) { return SEV[a.overall_level] - SEV[b.overall_level] || (a.astronaut_id > b.astronaut_id ? 1 : -1); });
     var n = { green: 0, yellow: 0, red: 0 }; pl.forEach(function (x) { n[x.overall_level]++; });
     var reds = sorted.filter(function (x) { return x.overall_level === "red"; });
-    var tabs = [["crew", "Équipage"], ["alerts", "Alertes"]].concat(isAdmin ? [["users", "Comptes"], ["audit", "Journal d'accès"]] : []);
-    var critAlerts = alerts.filter(function (a) { return a.level === "red"; }).length;
-
     function kpi(label, val, color) { return h("div", { className: "kpi", style: { "--c": color } }, h("small", null, label), h("b", { className: "mono" }, val)); }
+
+    function table() {
+      var cols = ["État", "Astronaute", "FC", "SpO₂", "HRV", "Tête", "Torse", "Jambes", "Rayonn.", "Constats"];
+      return h("div", { className: "tablewrap" }, h("table", { className: "tbl" },
+        h("thead", null, h("tr", null, cols.map(function (c) { return h("th", { key: c }, c); }))),
+        h("tbody", null, sorted.map(function (x) {
+          var v = x.vitals || {}, sq = function (l) { return h("td", null, h("i", { className: "sq " + l })); };
+          return h("tr", { key: x.astronaut_id, className: "clk", onClick: function () { open(x.astronaut_id); } },
+            h("td", null, h("span", { className: "chip " + LV_CLS[x.overall_level] }, LV_FR[x.overall_level])),
+            h("td", null, h("b", null, x.name), h("div", { className: "ac-id mono" }, x.astronaut_id)),
+            h("td", { className: "mono" }, v.hr ? Math.round(v.hr) : "—"), h("td", { className: "mono" }, v.spo2 ? Math.round(v.spo2) + " %" : "—"), h("td", { className: "mono" }, v.hrv ? Math.round(v.hrv) : "—"),
+            sq(x.zones.head.level), sq(x.zones.torso.level), sq(x.zones.legs.level), sq(x.radiation.level),
+            h("td", { className: "why" }, whyOf(x).slice(0, 2).join(" · ") || "—"));
+        }))));
+    }
+    var crewBody = !sorted.length ? h("div", { className: "empty" }, s.mode === "normal" ? "Aucun astronaute pour l'instant. Créez un compte astronaute avec la même mission." : "Chargement…")
+      : view === "table" ? table()
+      : h("div", { className: "crew" }, sorted.map(function (x) { return h(AstroCard, { key: x.astronaut_id, x: x, onOpen: function () { open(x.astronaut_id); } }); }));
+
     var content;
     if (tab === "crew") {
-      content = h("div", null,
+      content = h("div", { className: "screen" },
+        h(Head, { title: "Équipage", sub: (s.user.mission || "Toutes les missions") + " · " + pl.length + " astronaute" + (pl.length > 1 ? "s" : "") + " · actualisation automatique" },
+          h("div", { className: "seg sm", role: "group", "aria-label": "Affichage" }, [["cards", "Cartes"], ["table", "Tableau"]].map(function (o) {
+            return h("button", { key: o[0], className: view === o[0] ? "on" : "", onClick: function () { lsSet("astro.view", o[0]); setView(o[0]); } }, o[1]);
+          })),
+          h("button", { className: "btn ghost sm", onClick: function () { lsSet(KSND, sound ? "0" : "1"); setSound(!sound); }, "aria-pressed": sound }, h(Icon, { n: sound ? "sound" : "mute", size: 16 }), sound ? "Son activé" : "Son coupé"),
+          h("button", { className: "btn ghost sm", onClick: function () { report(s, pl, alerts); } }, h(Icon, { n: "file", size: 16 }), "Rapport")),
         h("div", { className: "kpis" }, kpi("Équipage", pl.length, "var(--blue)"), kpi("Nominal", n.green, "var(--ok)"), kpi("À surveiller", n.yellow, "var(--warn)"), kpi("Critique", n.red, "var(--bad)")),
         reds.length ? h("div", { className: "banner", role: "alert" }, h(Icon, { n: "bell", size: 22 }),
           h("div", { className: "grow" }, h("b", null, reds.length + (reds.length > 1 ? " astronautes en état critique" : " astronaute en état critique")), h("div", { className: "hint" }, reds.map(function (x) { return x.name; }).join(", "))),
           h("button", { className: "btn sm", onClick: function () { open(reds[0].astronaut_id); } }, "Ouvrir")) : null,
-        h("div", { className: "tools" }, h("span", { className: "hint" }, "Actualisation automatique"),
-          h("div", { style: { display: "flex", gap: 8 } },
-            h("button", { className: "btn ghost sm", onClick: function () { lsSet(KSND, sound ? "0" : "1"); setSound(!sound); }, "aria-pressed": sound }, h(Icon, { n: sound ? "sound" : "mute", size: 16 }), sound ? "Son activé" : "Son coupé"),
-            h("button", { className: "btn ghost sm", onClick: function () { report(s, pl, alerts); } }, h(Icon, { n: "file", size: 16 }), "Rapport"))),
-        sorted.length ? h("div", { className: "crew" }, sorted.map(function (x) { return h(AstroCard, { key: x.astronaut_id, x: x, onOpen: function () { open(x.astronaut_id); } }); }))
-          : h("div", { className: "empty" }, s.mode === "normal" ? "Aucun astronaute pour l'instant. Créez un compte astronaute avec la même mission." : "Chargement…"));
-    } else if (tab === "alerts") content = h(AlertList, { items: alerts });
-    else if (tab === "users") content = h(Remote, { s: s, what: "users", title: function (n) { return "Base de données · " + n + " comptes"; }, cols: ["ID", "Nom", "Âge", "Mission", "Rôle"], row: function (u) { return [u.id, u.name, u.age, u.mission, ROLE_FR[u.role]]; } });
-    else content = h(Remote, { s: s, what: "audit", title: function (n) { return "Journal d'accès · " + n + " entrées"; }, cols: ["Date", "Utilisateur", "Action", "Cible"], row: function (a) { return [fmtTime(a.ts), a.actor, a.action, a.target]; } });
-
-    return h("div", { className: "screen" },
-      h("div", { className: "tabs", role: "tablist" }, tabs.map(function (x) {
-        return h("button", { key: x[0], role: "tab", "aria-selected": tab === x[0], className: cx("tab", tab === x[0] && "on"), onClick: function () { setTab(x[0]); } },
-          x[1], x[0] === "alerts" && critAlerts ? h("span", { className: "badge" }, critAlerts) : null);
-      })),
-      h("div", { className: "section" }, content),
-      toast ? h("div", { className: "toast", role: "alert" }, toast) : null);
+        h("div", { className: "split" },
+          h("div", { className: "split-main" }, crewBody),
+          wide ? h("aside", { className: "feed" }, h("div", { className: "sec-title" }, "Flux d'alertes en direct"), h(AlertList, { items: alerts.slice(0, 10) })) : null));
+    } else if (tab === "alerts") content = h("div", { className: "screen" }, h(Head, { title: "Alertes", sub: alerts.length + " enregistrée" + (alerts.length > 1 ? "s" : "") }), h(AlertList, { items: alerts }));
+    else if (tab === "users") content = h("div", { className: "screen" }, h(Head, { title: "Comptes", sub: "Base de données locale" }), h(Remote, { key: "users", s: s, what: "users", title: function (n) { return "Base de données · " + n + " comptes"; }, cols: ["ID", "Nom", "Âge", "Mission", "Rôle"], row: function (u) { return [u.id, u.name, u.age, u.mission, ROLE_FR[u.role]]; } }));
+    else content = h("div", { className: "screen" }, h(Head, { title: "Journal d'accès", sub: "Qui a consulté quelles données" }), h(Remote, { key: "audit", s: s, what: "audit", title: function (n) { return "Journal d'accès · " + n + " entrées"; }, cols: ["Date", "Utilisateur", "Action", "Cible"], row: function (a) { return [fmtTime(a.ts), a.actor, a.action, a.target]; } }));
+    return shell(h("div", { className: "section" }, content));
   }
 
   function AstroView(p) {
     var s = p.s, al = useAlerts(s, []);
-    return h("div", { className: "screen" },
-      h(A.TwinDashboard, Object.assign({ variant: "suit", astronautId: s.mode === "demo" ? s.user.id : undefined }, connProps(s))),
-      s.mode === "normal" ? h("div", { className: "section" }, h("div", { className: "sec-title" }, "Mes alertes récentes"), h(AlertList, { items: al.slice(0, 10) })) : null);
+    return h(Layout, { s: s, onLogout: p.onLogout, nav: [["twin", "Mon jumeau"]], active: "twin", onNav: function () {} },
+      h("div", { className: "screen" },
+        h(A.TwinDashboard, Object.assign({ variant: "suit", astronautId: s.mode === "demo" ? s.user.id : undefined }, connProps(s))),
+        s.mode === "normal" ? h("div", { className: "section" }, h("div", { className: "sec-title" }, "Mes alertes récentes"), h(AlertList, { items: al.slice(0, 10) })) : null));
   }
 
   function Main(p) {
-    return h("div", null, h(Topbar, { s: p.s, onLogout: p.onLogout }),
-      p.s.user.role === "astronaut" ? h(AstroView, { s: p.s }) : h(CrewView, { s: p.s }));
+    return p.s.user.role === "astronaut" ? h(AstroView, { s: p.s, onLogout: p.onLogout }) : h(CrewView, { s: p.s, onLogout: p.onLogout });
   }
 
   function App() {
@@ -389,8 +544,7 @@
     function logout() { ssSet(null); setS(null); }
     function back() { try { localStorage.removeItem(KM); } catch (e) {} setMode(null); }
     if (s) return h(Main, { s: s, onLogout: logout });
-    if (!mode) return h(ModeSelect, { onPick: pick });
-    return h(Auth, { mode: mode, onLogin: login, onBack: back });
+    return h(Shell, null, !mode ? h(ModeSelect, { onPick: pick }) : h(Auth, { mode: mode, onLogin: login, onBack: back }));
   }
 
   ReactDOM.createRoot(document.getElementById("root")).render(h(App));

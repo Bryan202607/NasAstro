@@ -1,6 +1,6 @@
 /* Service worker : l'interface reste disponible hors ligne (les données /api ne sont jamais mises en cache).
    Incrémenter V à chaque nouvelle version pour forcer la mise à jour. */
-var V = "astro-v2", CORE = ["./", "index.html", "style.css", "app.js", "body-twin.js", "twin-dashboard.js", "guide.html", "icon.svg", "manifest.webmanifest"];
+var V = "astro-v6", CORE = ["./", "index.html", "style.css", "app.js", "body-twin.js", "twin-dashboard.js", "body-fallback.js", "vendor/react.bundle.js", "vendor/three.min.js", "vendor/OrbitControls.js", "vendor/GLTFLoader.js", "vendor/SkeletonUtils.js", "Xbot.glb", "astronaut_suit.glb", "guide.html", "icon.svg", "icon-192.png", "icon-512.png", "apple-touch-icon.png", "manifest.webmanifest"];
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(V).then(function (c) { return Promise.all(CORE.map(function (u) { return c.add(u).catch(function () {}); })); }).then(function () { return self.skipWaiting(); }));
 });

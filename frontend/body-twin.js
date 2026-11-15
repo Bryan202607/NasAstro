@@ -7,7 +7,10 @@
  *  - BodyPreview   : petit aperçu 3D (canvas) ; tous les aperçus partagent UN seul moteur WebGL
  */
 (function (global) {
-  var OK = new THREE.Color("#4fb286"), WARN = new THREE.Color("#e3a43b"), CRIT = new THREE.Color("#e5534b");
+  if (!global.THREE || !global.THREE.GLTFLoader || !global.THREE.OrbitControls || !global.THREE.SkeletonUtils) return; // 3D indisponible : body-fallback.js prend le relais
+  // teintes mates (pas de néon), converties en linéaire car le rendu sort en sRGB
+  var OK = new THREE.Color("#5f9b86").convertSRGBToLinear(), WARN = new THREE.Color("#d9a830").convertSRGBToLinear(), CRIT = new THREE.Color("#d0443f").convertSRGBToLinear();
+  function setupRenderer(r) { r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.9; }
   function riskColor(r, out) {
     r = Math.min(1, Math.max(0, r || 0));
     return r < 0.5 ? out.copy(OK).lerp(WARN, r / 0.5) : out.copy(WARN).lerp(CRIT, (r - 0.5) / 0.5);
@@ -46,8 +49,8 @@
   function createRig(variant, init) {
     var scene = new THREE.Scene();
     var st = init || { risks: { head: 0.2, torso: 0.2, legs: 0.2 }, rad: 0.1, sel: null };
-    scene.add(new THREE.HemisphereLight(0xeaf0f7, 0x20232a, 0.8));
-    var key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(2.5, 4, 3); scene.add(key);
+    scene.add(new THREE.HemisphereLight(0xdfe6ee, 0x15171c, 0.6));
+    var key = new THREE.DirectionalLight(0xfff1e0, 1.0); key.position.set(2.5, 4, 3); scene.add(key);
     var fill = new THREE.DirectionalLight(0x9db4d3, 0.5); fill.position.set(-3, 1.5, 2); scene.add(fill);
     var back = new THREE.DirectionalLight(0xffffff, 0.8); back.position.set(-2, 3, -3); scene.add(back);
     shadowTex = shadowTex || shadowTexture();
@@ -72,8 +75,8 @@
         if (variant === "mannequin") {
           var body = /surface/i.test(m.name);
           mat = new THREE.MeshStandardMaterial(body
-            ? { color: 0xb9c0ca, roughness: 0.62, metalness: 0.0, skinning: true }
-            : { color: 0x383c43, roughness: 0.45, metalness: 0.35, skinning: true });
+            ? { color: new THREE.Color("#aeb0b3").convertSRGBToLinear(), roughness: 0.55, metalness: 0.0, skinning: true }
+            : { color: new THREE.Color("#2b2d31").convertSRGBToLinear(), roughness: 0.38, metalness: 0.55, skinning: true });
           k = body ? 1 : 0;
         } else {
           mat = m.material.clone();
@@ -93,9 +96,9 @@
               "diffuseColor.rgb=mix(diffuseColor.rgb,zc,zs);")
             .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n" +
               "float sl=uSel.x*hw+uSel.y*tw+uSel.z*lw;\n" +
-              "totalEmissiveRadiance+=zc*(zs*0.16+sl*0.2*uK);\n" +
+              "totalEmissiveRadiance+=zc*(zs*0.04+sl*0.07*uK);\n" +
               "float fr=pow(1.0-clamp(dot(normalize(vNormal),normalize(vViewPosition)),0.0,1.0),2.5);\n" +
-              "totalEmissiveRadiance+=uRadC*fr*uRad*(0.5+0.5*uK)*1.4;");
+              "totalEmissiveRadiance+=uRadC*fr*uRad*(0.5+0.5*uK)*0.55;");
         };
         m.material = mat;
       });
@@ -130,7 +133,7 @@
         riskColor(st.risks[z], tmp); cur[i].lerp(tmp, 0.08);
         U.uC.value[i].set(cur[i].r, cur[i].g, cur[i].b);
       });
-      U.uS.value.set(sstep(0.12, 0.85, st.risks.head) * 0.9, sstep(0.12, 0.85, st.risks.torso) * 0.9, sstep(0.12, 0.85, st.risks.legs) * 0.9);
+      U.uS.value.set(sstep(0.12, 0.85, st.risks.head) * 0.5, sstep(0.12, 0.85, st.risks.torso) * 0.5, sstep(0.12, 0.85, st.risks.legs) * 0.5);
       U.uSel.value.set(st.sel === "head" ? 1 : 0, st.sel === "torso" ? 1 : 0, st.sel === "legs" ? 1 : 0);
       riskColor(st.rad, tmp); radCur.lerp(tmp, 0.08);
       U.uRadC.value.set(radCur.r, radCur.g, radCur.b);
@@ -149,6 +152,7 @@
     opts = opts || {};
     var w = el.clientWidth || 320, h = el.clientHeight || 400;
     var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    setupRenderer(renderer);
     renderer.setPixelRatio(Math.min(global.devicePixelRatio || 1, 2));
     renderer.setSize(w, h);
     var dom = renderer.domElement;
@@ -216,7 +220,7 @@
   function getHub() {
     if (hub) return hub;
     var r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    r.setPixelRatio(1);
+    setupRenderer(r); r.setPixelRatio(1);
     hub = { r: r, items: [], raf: 0, last: 0 };
     function tick(now) {
       hub.raf = requestAnimationFrame(tick);

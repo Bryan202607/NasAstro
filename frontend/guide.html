@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Guide d'utilisation · Jumeau numérique</title>
+<title>Guide d'utilisation · NasAstro</title>
 <style>
-:root{--bg:#fff;--fg:#1b1e23;--mut:#5b6370;--card:#f2f4f7;--acc:#1f7a5a}
-@media (prefers-color-scheme:dark){:root{--bg:#0e1013;--fg:#eceef1;--mut:#8d949e;--card:#181b20;--acc:#4fb286}}
+:root{--bg:#fff;--fg:#1b1e23;--mut:#5b6370;--card:#f2f4f7;--acc:#c2410c}
+@media (prefers-color-scheme:dark){:root{--bg:#070a10;--fg:#eceef1;--mut:#8d949e;--card:#181b20;--acc:#ffb347}}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,"Segoe UI",Roboto,system-ui,sans-serif}
 main{max-width:820px;margin:0 auto;padding:20px 18px 60px}
 h1{font-size:26px;margin:.4em 0}h2{font-size:20px;margin:1.8em 0 .4em;color:var(--acc)}h3{font-size:16px;margin:1.2em 0 .2em}
@@ -14,19 +14,19 @@ h1{font-size:26px;margin:.4em 0}h2{font-size:20px;margin:1.8em 0 .4em;color:var(
 code,pre{background:var(--card);border-radius:8px;font-size:13.5px}code{padding:1px 6px}
 pre{padding:12px;overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px;display:block;overflow-x:auto}
 td,th{border-bottom:1px solid rgba(128,128,128,.3);padding:6px 8px;text-align:left}
-.g{color:#4fb286}.y{color:#e3a43b}.r{color:#e5534b}a{color:var(--acc)}
+.g{color:#34d399}.y{color:#fbbf24}.r{color:#ff4d5e}a{color:var(--acc)}
 @media print{a{color:inherit}}
 </style>
 </head>
 <body><main>
 <h1>Guide d'utilisation</h1>
-<div class="box">Jumeau numérique · Santé de l'équipage. L'application suit en continu les constantes des astronautes (capteurs de la combinaison) et l'environnement de la cabine, et les affiche sur un corps 3D coloré par niveau de risque. <b>Prototype : ce n'est pas un dispositif médical.</b></div>
+<div class="box">NasAstro · Santé de l'équipage. L'application suit en continu les constantes des astronautes (capteurs de la combinaison) et l'environnement de la cabine, et les affiche sur un corps 3D coloré par niveau de risque. <b>Prototype : ce n'est pas un dispositif médical.</b></div>
 
 <h2>1. Démarrer</h2>
 <h3>Version Windows (exécutable)</h3>
 <ol>
-<li>Dézippez le dossier <code>JumeauNumerique</code> (ne lancez pas depuis le zip).</li>
-<li>Double-cliquez <code>JumeauNumerique.exe</code>. Une fenêtre noire s'ouvre : c'est le serveur local, <b>ne la fermez pas</b> tant que vous utilisez l'application.</li>
+<li>Dézippez le dossier <code>NasAstro</code> (ne lancez pas depuis le zip).</li>
+<li>Double-cliquez <code>NasAstro.exe</code>. Une fenêtre noire s'ouvre : c'est le serveur local, <b>ne la fermez pas</b> tant que vous utilisez l'application.</li>
 <li>Le navigateur s'ouvre sur l'application. Sinon, allez sur l'adresse affichée (<code>http://localhost:8000</code>).</li>
 <li>Au premier lancement, Windows peut demander d'autoriser le réseau : cliquez <b>Autoriser</b> (nécessaire pour le téléphone).</li>
 <li>Pour tester sans vrais capteurs : lancez <code>Lancer_avec_simulateur.bat</code> à la place.</li>
