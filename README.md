@@ -1,4 +1,4 @@
-# Jumeau numérique · Santé équipage
+# NasAstro · Santé équipage
 
 Deux modes dans la même application :
 
@@ -14,9 +14,20 @@ Fonctions : jumeau 3D, tableau de bord équipage trié par gravité, **alertes p
 
 Rôles : **astronaute** (ses données), **médecin** (les astronautes de sa mission = son équipage), **administration** (tout, + liste des comptes).
 
+## Interface PC
+Barre latérale (Équipage, Alertes, Comptes, Journal), raccourcis clavier **1 à 4** pour changer de page, **Échap** pour revenir à la liste, vue **Cartes / Tableau**, flux d'alertes en direct à droite. Sur petit écran, la barre du haut et les onglets reviennent.
+
+## 100 % hors ligne
+Aucune librairie n'est chargée depuis Internet : React est dans `frontend/vendor/react.bundle.js`. Pour le jumeau **3D**, lancer **une seule fois** `Telecharger_3D.bat` (ou `python backend/telecharger_librairies.py`, avec internet) : three.js est copié dans `frontend/vendor/`. Sans cette étape, une silhouette 2D (zones colorées, cliquable) remplace le 3D. L'exécutable Windows embarque tout (le téléchargement est fait à la compilation).
+
+## IA cardiaque (guide de branchement)
+Chaque mesure reçue passe par `backend/app/ia_cardiaque.py` (appel de `mesure()` ; `fin_de_nuit()` via `POST /api/ingest/night-end`). Résultat : panneau **IA cardiaque** dans le jumeau (état, 5 gardiens, dernières réactions), torse/niveau global qui réagissent, alertes enregistrées.
+- **Moteur réel** : copier les fichiers de Steve dans `backend/ia/` (voir `backend/ia/LISEZMOI.txt`) puis `pip install -r backend/requirements-ia.txt`.
+- **Sans ces fichiers** : moteur de secours simplifié (30 s + 2 min) pour voir l'IA réagir. Le simulateur (`simulate_sensors.py`) fait une fausse urgence puis une FC élevée toutes les 6 min. Le mode démo les rejoue aussi.
+
 ## Exécutable Windows
-Onglet **Actions** de GitHub → *Build Windows exe* → *Run workflow* : télécharger `JumeauNumerique-windows.zip` (artefact). Ou, sur un PC Windows avec Python : double-cliquer `backend/build_exe.bat`.
-Résultat : `JumeauNumerique.exe` + `GUIDE_UTILISATEUR.html`. Voir le guide : `frontend/guide.html`.
+Onglet **Actions** de GitHub → *Build Windows exe* → *Run workflow* : télécharger `NasAstro-windows.zip` (artefact). Ou, sur un PC Windows avec Python : double-cliquer `backend/build_exe.bat`.
+Résultat : `NasAstro.exe` + `GUIDE_UTILISATEUR.html`. Voir le guide : `frontend/guide.html`.
 
 ## Lancer le mode normal (sans exécutable)
 ```bash
