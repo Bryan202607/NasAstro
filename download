@@ -1,0 +1,5 @@
+# NE JAMAIS committer : base médicale, clés de chiffrement, codes d'accès
+backend/data/
+*.db
+*.key
+__pycache__/
