@@ -1,5 +1,0 @@
-# Seulement pour le MOTEUR RÉEL de Steve (même version de scikit-learn que son ordinateur : pip show scikit-learn)
-numpy
-pandas
-scikit-learn
-joblib
