@@ -1,0 +1,40 @@
+# Publie le dossier frontend/ sur GitHub Pages (mode démo : pas de backend sur Pages).
+# À placer dans : .github/workflows/main.yml
+# Prérequis (une seule fois) : Settings > Pages > Source = "GitHub Actions".
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Configurer Pages
+        uses: actions/configure-pages@v5
+
+      - name: Envoyer le dossier frontend
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend
+
+      - name: Déployer
+        id: deployment
+        uses: actions/deploy-pages@v4
