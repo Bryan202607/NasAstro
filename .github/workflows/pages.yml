@@ -1,5 +1,6 @@
-# Publie le dossier frontend/ sur GitHub Pages (mode DÉMO uniquement : pas de backend sur Pages)
-name: Deploy demo to GitHub Pages
+# Publie le dossier frontend/ sur GitHub Pages (démo en ligne, sans serveur).
+# Prérequis : Settings -> Pages -> Source = "GitHub Actions".
+name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
@@ -12,16 +13,20 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: frontend
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
